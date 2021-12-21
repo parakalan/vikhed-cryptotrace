@@ -1,0 +1,274 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="author" content="colorlib.com">
+		<title>Trace BTC</title>
+		<link href="https://fonts.googleapis.com/css?family=Poppins" rel="stylesheet" />
+		<script src="https://vikhed.in/vendor/jquery/jquery-3.2.1.min.js"></script>
+		<link href="css/main.css" rel="stylesheet" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<link rel="shortcut icon" href="btc.ico" type="image/x-icon">
+
+	</head>
+	<body>
+	<h1>
+		Trace BTC <br>
+		<span style="font-size: 0.7em;">
+			(Read how we do it <a href="#">here</a>)
+		</span>
+	</h1>
+
+	<div class="s003">
+	  <form>
+		<div class="inner-form">
+			<div class="input-field second-wrap">
+				<input id="search" type="text" placeholder="Wallet Address" />
+			</div>
+			<div class="input-field third-wrap">
+				<button class="btn-search" type="button" onclick="trace()">
+					<svg class="svg-inline--fa fa-search fa-w-16" aria-hidden="true" data-prefix="fas" data-icon="search" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+					<path fill="currentColor" d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"></path>
+					</svg>
+				</button>
+			</div>
+		</div>
+	  </form>
+	</div>
+	<div id="chain">
+		<div style="padding: 10px">&nbsp;</div>
+	</div>
+	<div id="loader" class="loader"></div>
+	</div>
+
+	<!--<script src="js/extention/choices.js"></script>-->
+	<script>
+		var satoshiToBtc= 0.00000001;
+		var btcToSatoshi = 1 / satoshiToBtc;
+
+		function makeRequest(method, url) {
+			return new Promise(function (resolve, reject) {
+				let xhr = new XMLHttpRequest();
+				xhr.open(method, url);
+				xhr.onload = function () {
+					if (this.status >= 200 && this.status < 300) {
+						resolve(xhr.response);
+					} else {
+						reject({
+							status: this.status,
+							statusText: xhr.statusText
+						});
+					}
+				};
+				xhr.onerror = function () {
+					reject({
+						status: this.status,
+						statusText: xhr.statusText
+					});
+				};
+				xhr.send();
+			});
+		}
+
+		async function getTxnsRecursive(limit, offset, address, txnsTillNow) {
+			if(offset >= 50000) {
+				return txnsTillNow;
+			}
+			return makeRequest("GET", "https://api.blockchain.info/haskoin-store/btc/address/" + address +
+												"/transactions/full?limit="+ limit +
+												"&offset=" + offset)
+			.then(function(val) {
+				val = JSON.parse(val);
+				txnsTillNow = txnsTillNow.concat(val);
+				if(val.length >= 4000) {
+					return getTxnsRecursive(limit + 4000, limit + 1, address, txnsTillNow).then((txns) => {
+						txnsTillNow = txnsTillNow.concat(txns);
+					});
+				}
+				else {
+					return txnsTillNow;
+				}
+			});
+		}
+		async function getAllTransactions(address) {
+			return getTxnsRecursive(4000, 0, address, []).then(function(allTxns) {
+				let allTxnsUnique = [];
+				let txnHashSet = new Set();
+				for(var txnIdx in allTxns) {
+					txn = allTxns[txnIdx];
+					if(!txnHashSet.has(txn.txid)) {
+						allTxnsUnique.push(txn);
+						txnHashSet.add(txn['txid']);
+					}
+				}
+				return allTxnsUnique;
+			})
+		}
+
+		function trace() {
+			$("#chain").html("");
+			let walletAddr = $("#search").val();
+			$("#chain").append(`<div class="add" style="text-align: center;">
+				<a href="https://www.blockchain.com/btc/address/` + walletAddr + `" target="_blank">
+					` + walletAddr + `
+				</a>
+			</div>`)
+			$("#loader").show();
+			getMajorChain(walletAddr, []).then((chain) => populateChain(chain, walletAddr));
+		}
+
+		function addWalletToUiChain(major) {
+			let fmt = `
+			<div class="container">
+				<a href="#" style="cursor: default" class="arrow up">
+					<i class="btc fa fa-bitcoin"></i>
+				</a>
+			</div>
+			<div class="add" style="text-align: center;">
+				<a href="https://www.blockchain.com/btc/address/` + major + `" target="_blank">
+					` + major + `
+				</a>
+			</div>`
+			$("#chain").append(fmt);
+		}
+
+		function getMajorContributor(allTxns, address) {
+			addressValueMap = {}
+			addressValueMap["COINBASE"] = 0
+			for(var txnIdx in allTxns) {
+				txn = allTxns[txnIdx];
+				inputWalletIds = txn.inputs.map(({ address }) => address);
+				outputWalletIds = txn.outputs.map(({ address }) => address);
+				if(outputWalletIds.includes(address) && !inputWalletIds.includes(address)) {
+					for(var inpIdx in txn.inputs) {
+						inp = txn.inputs[inpIdx];
+						if(inp.coinbase) {
+							for (var opIdx in txn.outputs) {
+								let op = txn.outputs[opIdx];
+								if(op.address == address)
+									addressValueMap["COINBASE"] += op['value'];
+							}
+							break;
+						}
+						else {
+							if(inp['address'] in addressValueMap) {
+								addressValueMap[inp['address']] = addressValueMap[inp['address']] + inp['value']
+							}
+							else {
+								addressValueMap[inp['address']] = inp['value']
+							}
+						}
+					}
+				}
+			}
+			let maxSource = null, maxVal = -1;
+			for(var source in addressValueMap) {
+				if(addressValueMap[source] > maxVal) {
+					maxVal = addressValueMap[source];
+					maxSource = source;
+				}
+			}
+			return {
+				"source": maxSource,
+				"value": maxVal
+			}
+		}
+
+		async function getMajorChain(address, chain) {
+			/*
+				Get major chain to this address, ie. the path which contributed most to this address. We find this out getting
+				the major contributor recursively.
+				Example -
+				We want to find the major chain for address `N`. We see that `D` has sent the most BTC to `N`. We find the wallet
+				which sent most BTC to `D`, which is `C` suppose. We continue this until we reach address `A` which gets newly minted coins.
+				This is one such chain -
+				COINBASE -> 18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX -> 1JLQ5izr2QZnEwNbUsVJTGRAbDgJ628vL4 -> bc1q4xtxgpjn82anm7dvhqjshud2j5qzlcckqf60c6 -> bc1qpkq0sssdm8wemesv6v3yjq0gh39tjzpd34mjfj
+			*/
+			if(address == "COINBASE") {
+				$("#loader").hide();
+				return chain;
+			}
+
+			return getAllTransactions(address).then((allTxns) => {
+				let majorContributor = getMajorContributor(allTxns, address);
+				chain.push(majorContributor.source);
+				addWalletToUiChain(majorContributor.source)
+				return getMajorChain(majorContributor.source, chain);
+			});
+		}
+	</script>
+	<style>
+				@-webkit-keyframes uparrow {
+		  0% { -webkit-transform: translateY(0); opacity: 0.4 }
+		  100% { -webkit-transform: translateY(-0.4em); opacity: 0.9 }
+		}
+		@-webkit-keyframes downarrow {
+		  0% { -webkit-transform: translateY(0); opacity: 0.4 }
+		  100% { -webkit-transform: translateY(0.4em); opacity: 0.9 }
+		}
+
+		h1 {
+			text-align: center;
+			font-weight: bold;
+			font-size: 2em;
+			padding: 15px;
+			font-family: monospace;
+		}
+
+		a {
+			color: #008091;
+		}
+
+		.btc {
+			margin-top: 1em;
+			margin-left: -0.4em;
+			font-size:1.2em;
+			color:#40ff00;
+			position: absolute;
+		}
+
+		.add {
+			padding: 10px;
+			/*width: 20%;
+			margin:  auto;*/
+			font-weight: bold;
+			font-size: 1.2em;
+			opacity: 1;
+		}
+
+		.arrow {
+		  border-color:transparent;
+		  border-style:solid;
+		  border-width:0 3em;
+		  display:block;
+		  height:0;
+		  margin:10em auto;
+		  margin-top: 2em;
+		  margin-bottom: 2em;
+		  opacity:1;
+		  width:0;
+		}
+		.up {
+		  /*-webkit-animation: uparrow 0.6s 5 alternate ease-in-out;*/
+		  border-bottom:3em solid #003602;
+		}
+		.loader {
+			border: 8px solid #f3f3f3; /* Light grey */
+			border-top: 8px solid #3498db; /* Blue */
+			border-radius: 50%;
+			width: 50px;
+			height: 50px;
+			animation: spin 2s linear infinite;
+			margin-left: 49%;
+			margin-top: 20px;
+			display: none;
+		}
+
+	@keyframes spin {
+	  0% { transform: rotate(0deg); }
+	  100% { transform: rotate(360deg); }
+	}
+	</style>
+	</body><!-- This templates was made by Colorlib (https://colorlib.com) -->
+</html>
