@@ -126,6 +126,21 @@
 		}
 
 		function addWalletToUiChain(major) {
+			if(major == "COINBASE") {
+				let fmt = `
+					<div class="container">
+						<a href="#" style="cursor: default" class="arrow up">
+							<i class="btc fa fa-bitcoin"></i>
+						</a>
+					</div>
+					<div class="add" style="text-align: center;">
+						<a href="https://en.bitcoin.it/wiki/Coinbase" target="_blank">
+							` + major + `
+						</a>
+					</div>`
+				$("#chain").append(fmt);
+				return;
+			}
 			let fmt = `
 			<div class="container">
 				<a href="#" style="cursor: default" class="arrow up">
