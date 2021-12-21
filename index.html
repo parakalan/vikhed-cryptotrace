@@ -34,7 +34,9 @@
 			</div>
 		</div>
 		<div id="random" style="padding-top: 15px">
-			Tryout a random address <a style="cursor: pointer;" id="randAddr"></a>
+			<a id="randAddr"  style="cursor: pointer;">
+				Don't have a wallet ? Try a random address
+			</a>
 		</div>
 	  </form>
 	</div>
@@ -46,13 +48,10 @@
 
 	<!--<script src="js/extention/choices.js"></script>-->
 	<script>
-		$('#randAddr').click( function(e) {e.preventDefault();$("#search").val($('#randAddr').html()); trace(); return false; } );
+		$('#randAddr').click( function(e) {e.preventDefault();$("#search").val(randomAddresses[Math.floor(Math.random() * randomAddresses.length)]); trace(); return false; } );
 		var satoshiToBtc= 0.00000001;
 		var btcToSatoshi = 1 / satoshiToBtc;
 		var randomAddresses = ["3FsUxawZtAUmjoJQmdtdcGyvQSKJdvkr1p","3AnuySp1m9JPYYTYzJR8zrUej4dE2Bz1Wp","3ACj7GQ6P9eJowx5gLpAjoaPEdnFUcknrR","3CGM1knDVZ2yc1MWSyB7FMquWzLU93c6oo","19ZSSFFYwayuxt4tosrQzNx8dnpQo2D4Co","3D1F9dJ4yz5sDgXxbcDbEAQowoUzJsxReA","3PRNn7ZQ5ADqthtgWDJS3bJ8CQgSF7n6uY","1Kr6QSydW9bFQG1mXiPNNu6WpJGmUa9i1g","3BN6iquQeFZZPX3KoDFMYv2FDF1eLrvuhU","34ZvmqgcdcnVZLCZ3oLj5Jn4pZif1LeuQ4","3N77XKr7FzpiZqXVMG9bTgqMqcDXBFgFfy","3HgYHKxZJuTRavd4Z66mHTHYdEjD4mxC3Y","17x65bM8x1PKxAiGwsSx1f5bmxM8gVLQc1","18bgSpYq9P8Z5MT7KUxXKE6ZR137KSmGYz","bc1q7cyrfmck2ffu2ud3rn5l5a8yv6f0chkp0zpemf","bc1qtgjwqyczaqeudwf7pd3jj0h06jjsadmzuvteej","bc1q2aaxvx9lx9d4wa5gn34xtye50y8nv7letqphpn","346whse4o9KNaNz1UY79b65UYXwLatmZZt","36JWUJT7nhMHbEMKka7Mc7nfvLH8YdK7V4","bc1q40ysxfpm7vuhdqwdlxx3urr0dwf9s8dy4pdxu8","17acuJY4wDo3AvQPyNb1yWjaYgfwZ7MYSV","3DJFzjghhPVDSjXgz9xEwUErt9nwM3LXiq","192sCnwf4hdf3axhoqBgHkEiyUEByriaoc","32bA873jbTZW9bngNW232gdCG8N1ehPdFz",]
-
-		$('#randAddr').html(randomAddresses[Math.floor(Math.random() * randomAddresses.length)]);
-
 
 		function makeRequest(method, url) {
 			return new Promise(function (resolve, reject) {
